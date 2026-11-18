@@ -63,17 +63,21 @@ textarea{min-height:90px;resize:vertical}
 @media print{.side,.noprint,.top,.toast{display:none!important}body{background:#fff;color:#000}.main{padding:0;max-width:none}.card{border:0;padding:0}th,td{border-color:#999}}
 </style>
 </head>
-<body><div id="app"></div>
+<body><div id="app"><p style="padding:24px;font-family:system-ui">Memuat Darsuna…</p></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>window.supabase||document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"><\/script>')</script>
+<script>window.supabase||document.write('<script src="supabase.js"><\/script>')</script>
 <script>
 // ====== ISI DUA BARIS INI DENGAN DATA PROYEK SUPABASE ANDA ======
-const SUPABASE_URL='https://eaxkoqkncwrwehzwmywd.supabase.co',SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVheGtvcWtuY3dyd2VoendteXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwMTM0MDUsImV4cCI6MjExMDU4OTQwNX0.ux-953VaXcFRmTTexn_umxJSThUj4WYo0o1mE-apsXI';
+const SUPABASE_URL='https://YOUR-PROJECT.supabase.co',SUPABASE_ANON_KEY='YOUR-ANON-KEY';
 // ================================================================
 const K='darsuna_v1',DAYS=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],MONTHS=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],ST=['Hadir','Izin','Sakit','Alfa'];
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+function showErr(m){const a=document.getElementById('app');if(a&&!a.querySelector('.layout,.lg'))a.innerHTML='<div class="card login"><h2>Aplikasi gagal dimuat</h2><p>'+esc(m)+'</p><p class="muted">Periksa koneksi internet serta isi SUPABASE_URL dan SUPABASE_ANON_KEY, lalu muat ulang halaman.</p></div>'}
+window.addEventListener('error',e=>showErr(e.message));window.addEventListener('unhandledrejection',e=>showErr((e.reason&&e.reason.message)||String(e.reason)));
+let sb;try{if(typeof supabase==='undefined')throw new Error('Pustaka Supabase gagal dimuat (CDN diblokir atau tidak ada internet). Unduh supabase.js dan letakkan satu folder dengan file ini.');sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}catch(e){setTimeout(()=>showErr(e.message),0)}
 const mail=u=>u+'@darsuna.app';
 let db={inst:'Darsuna',welcome:'',subjects:[],classes:[],teachers:[],att:[],session:null,me:{}};
 async function pageAll(mk){let out=[],i=0;for(;;){const{data,error}=await mk().range(i,i+999);if(error)throw error;out=out.concat(data);if(data.length<1000)return out;i+=1000}}
@@ -93,7 +97,7 @@ async function start(uid){
  if(!p){await sb.auth.signOut();render();return toast('Akun belum aktif. Hubungi admin.')}
  db.me=p;await loadAll();db.session={role:p.role=='admin'?'admin':'guru',id:uid};view='dash';selT=null;render()}
  catch(e){toast('Gagal memuat: '+e.message)}}
-async function boot(){
+async function boot(){if(!sb)return;
  if(/YOUR-/.test(SUPABASE_URL))return document.getElementById('app').innerHTML='<div class="card login"><h2>Konfigurasi belum diisi</h2><p>Isi SUPABASE_URL dan SUPABASE_ANON_KEY di bagian atas file ini. Lihat PANDUAN.md.</p></div>';
  render();const{data}=await sb.auth.getSession();if(data.session)start(data.session.user.id)}
 let view='dash',selT=null,fMonth=ymd(new Date()).slice(0,7),fSub='',tab='guru';
@@ -108,15 +112,15 @@ const bar=(label,o)=>`<div class="pc"><span>${esc(label)}</span><b>${o.p}% <span
 async function login(e){e.preventDefault();
  const u=document.getElementById('lu').value.trim().toLowerCase(),p=document.getElementById('lp').value;
  const{data,error}=await sb.auth.signInWithPassword({email:mail(u),password:p});
- if(error)return toast('Username atau password salah');await start(data.user.id)}
+ if(error)return toast(/invalid login/i.test(error.message)?'Username atau password salah':'Gagal masuk: '+error.message);await start(data.user.id)}
 async function logout(){await sb.auth.signOut();db.session=null;render()}
 function go(v){view=v;render();scrollTo(0,0)}
-function menu(){const m=[['dash','🏠','Beranda'],['profil','👤','Profil'],['absen','✅','Absensi'],['jurnal','📖','Jurnal'],['rekap','📊','Rekap']];if(isA())m.push(['master','⚙️','Data']);return m}
+function menu(){const m=[['dash','🏠','Beranda'],['profil','👤','Profil'],['absen','✅','Absensi'],['jurnal','📖','Jurnal'],['rekap','📊','Rekap']];if(isA()){m.push(['master','⚙️','Data']);m.push(['pw','🔑','Password'])}return m}
 function render(){
  const a=document.getElementById('app'),u=me();
  if(!u||!u.id){a.innerHTML=`<div class="lg"><div class="lgart"><svg viewBox="0 0 400 300" role="img" aria-label="Ilustrasi kelas dengan papan absensi guru"><circle cx="200" cy="150" r="140" fill="#fff" opacity=".08"/><rect x="52" y="36" width="250" height="160" rx="14" fill="#fff"/><rect x="52" y="36" width="250" height="160" rx="14" fill="none" stroke="#0b3d38" stroke-width="6"/><text x="72" y="66" font-size="15" font-weight="700" fill="#0b3d38" font-family="system-ui,sans-serif">Absensi Hari Ini</text><g><rect x="72" y="84" width="22" height="22" rx="6" fill="#15803d"/><path d="M77 95l5 5 9-10" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="104" y="90" width="120" height="10" rx="5" fill="#cfe3de"/><rect x="236" y="88" width="50" height="14" rx="7" fill="#d1fae5"/><rect x="72" y="118" width="22" height="22" rx="6" fill="#15803d"/><path d="M77 129l5 5 9-10" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="104" y="124" width="95" height="10" rx="5" fill="#cfe3de"/><rect x="236" y="122" width="50" height="14" rx="7" fill="#d1fae5"/><rect x="72" y="152" width="22" height="22" rx="6" fill="#f59e0b"/><rect x="79" y="158" width="8" height="3" rx="1.5" fill="#fff"/><rect x="79" y="164" width="8" height="3" rx="1.5" fill="#fff"/><rect x="104" y="158" width="110" height="10" rx="5" fill="#cfe3de"/><rect x="236" y="156" width="50" height="14" rx="7" fill="#fef3c7"/></g><rect x="150" y="196" width="6" height="30" fill="#0b3d38"/><rect x="198" y="196" width="6" height="30" fill="#0b3d38"/><circle cx="338" cy="96" r="30" fill="#fff"/><circle cx="338" cy="96" r="30" fill="none" stroke="#0b3d38" stroke-width="5"/><path d="M338 76v20l14 9" stroke="#0b3d38" stroke-width="4" fill="none" stroke-linecap="round"/><rect x="30" y="236" width="340" height="12" rx="6" fill="#04201c" opacity=".35"/><circle cx="330" cy="182" r="17" fill="#f4c7a1"/><path d="M313 178c2-14 32-14 34 0-8-5-26-5-34 0z" fill="#0b3d38"/><path d="M304 240c0-30 12-44 26-44s26 14 26 44z" fill="#fbbf24"/><path d="M304 205l-34 -16" stroke="#fbbf24" stroke-width="9" stroke-linecap="round"/><circle cx="268" cy="188" r="5" fill="#f4c7a1"/><path d="M40 236l30-8 30 8v-34l-30-8-30 8z" fill="#fff"/><path d="M70 228v-34" stroke="#0f766e" stroke-width="3"/><path d="M48 208l16 -4M48 216l16 -4M76 204l16 4M76 212l16 4" stroke="#0f766e" stroke-width="2.5" stroke-linecap="round"/><g fill="#fde68a"><path d="M360 40l4 9 10 1-8 7 3 10-9-6-9 6 3-10-8-7 10-1z"/><path d="M30 70l3 6 7 1-5 5 2 7-7-4-7 4 2-7-5-5 7-1z"/></g></svg><h1>Darsuna</h1><p>Sistem kehadiran guru &amp; jurnal pembelajaran yang simpel, cepat, dan rapi.</p><div class="lgf"><span>✅ Absensi guru</span><span>📖 Jurnal otomatis</span><span>📊 Rekap persentase</span></div></div><div class="login card"><h2>Selamat datang 👋</h2><p class="muted">Masuk untuk melanjutkan ke Darsuna</p><form onsubmit="login(event)"><label>Username</label><input id="lu" autocomplete="username" required><label>Password</label><input id="lp" type="password" autocomplete="current-password" required><br><br><button class="btn" style="width:100%">Masuk</button></form><p class="muted">Gunakan akun yang diberikan admin lembaga.</p></div></div>`;return}
  const nav=menu().map(m=>`<button class="${view==m[0]?'on':''}" onclick="go('${m[0]}')"><span>${m[1]}</span><span>${m[2]}</span></button>`).join('');
- const V={dash,profil,absen,jurnal,rekap,master}[view]||dash;
+ const V={dash,profil,absen,jurnal,rekap,master,pw:gantiPw}[view]||dash;
  a.innerHTML=`<div class="layout"><aside class="side"><div class="brand">Darsuna<small>${esc(db.inst)}</small></div><nav class="nav">${nav}</nav><button class="btn sec out" style="margin-top:auto" onclick="logout()">Keluar</button></aside><main class="main"><div class="top noprint"><b style="color:var(--pr)">Darsuna</b><button class="btn sec sm" onclick="logout()">Keluar</button></div>${V(u)}</main></div>`;
  if(view=='absen')tick()}
 function dash(u){
@@ -219,6 +223,13 @@ async function addK(){const n=k_n.value.trim();if(!n)return toast('Isi nama kela
 async function setK(id,v){await run(sb.from('classes').update({students:+v||0}).eq('id',id),'Diperbarui');await refresh()}
 async function addM(){const n=m_n.value.trim();if(!n)return toast('Isi nama mapel');if(await run(sb.from('subjects').insert({name:n})))await refresh()}
 async function saveApp(){if(await run(sb.from('settings').update({inst:p_i.value.trim()||db.inst,welcome:p_w.value}).eq('id',1),'Tersimpan'))await refresh()}
+function gantiPw(){return`<h2>Ganti Password</h2><div class="card" style="max-width:420px"><label>Password saat ini</label><input id="pw0" type="password" autocomplete="current-password"><label>Password baru (min. 6 karakter)</label><input id="pw1" type="password" autocomplete="new-password"><label>Ulangi password baru</label><input id="pw2" type="password" autocomplete="new-password"><br><br><button class="btn" onclick="doPw()">Simpan password</button></div>`}
+async function doPw(){const a=pw0.value,b=pw1.value,c=pw2.value;
+ if(!a||!b)return toast('Lengkapi semua kolom');if(b.length<6)return toast('Password baru minimal 6 karakter');
+ if(b!==c)return toast('Ulangi password tidak sama');if(b===a)return toast('Password baru harus berbeda');
+ const{error:e1}=await sb.auth.signInWithPassword({email:mail(db.me.username),password:a});if(e1)return toast('Password saat ini salah');
+ const{error}=await sb.auth.updateUser({password:b});if(error)return toast('Gagal: '+error.message);
+ toast('Password berhasil diganti');pw0.value=pw1.value=pw2.value=''}
 boot();
 </script>
 </body></html>
